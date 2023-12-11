@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Monitoreo para Invernadero Aeropónico</title>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+            text-align: center;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #4CAF50;
+        }
+        section {
+            margin-bottom: 20px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .charts-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        canvas {
+            width: 100%;
+            height: 200px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            max-height: 200px;
+        }
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #777;
+        }
+        .regresar-btn {
+            font-size: 24px;
+            padding: 15px 30px;
+            margin: 20px;
+            cursor: pointer;
+            border: none;
+            color: #fff;
+            background-color: #4CAF50;
+            border-radius: 10px;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        .regresar-btn:hover {
+            background-color: #45a049;
+        }
+        .fecha-selector {
+            font-size: 18px;
+            padding: 10px;
+            margin-right: 10px;
+        }
+        .mostrar-btn {
+            font-size: 18px;
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            color: #fff;
+            background-color: #4CAF50;
+            border-radius: 10px;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        .mostrar-btn:hover {
+            background-color: #45a049;
+        }
+
+        /* Agregamos estilos para dispositivos móviles */
+        @media only screen and (max-width: 600px) {
+            section {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Sistema de Monitoreo para Invernadero Aeropónico</h1>
+    </header>
+
+    <section>
+        <label for="fechaSelector" class="fecha-selector">Selecciona una fecha:</label>
+        <select id="fechaSelector" class="fecha-selector"></select>
+        <button onclick="mostrarDatosPorFecha()" class="mostrar-btn">Mostrar Datos</button>
+
+        <h2>Registros</h2>
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Hora</th>
+                    <th>Temperatura (°C)</th>
+                    <th>Humedad (%)</th>
+                    <th>Luminosidad (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Aquí se mostrarán los registros obtenidos de Firebase -->
+            </tbody>
+        </table>
+
+        <h2>Gráficos del día</h2>
+        <div class="charts-container">
+            <canvas id="temperatureChart" width="150" height="100"></canvas>
+            <canvas id="humidityChart" width="150" height="100"></canvas>
+            <canvas id="lightChart" width="150" height="100"></canvas>
+        </div>
+    </section>
+
+    <!-- Botón para regresar al menú principal -->
+    <button class="regresar-btn" onclick="regresarAlMenuPrincipal()">Menú Principal</button>
+
+    <footer>
+        <p>&copy; 2023 Sistema de Monitoreo para Invernadero Aeropónico</p>
+    </footer>
+
+    <script>
+        function regresarAlMenuPrincipal() {
+            window.location.href = 'index.html';
+        }
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyBNrtVulvBCYi3z7KCMx9u3mz7mVYL9i3M",
+            authDomain: "iot-8f44e.firebaseapp.com",
+            databaseURL: "https://iot-8f44e-default-rtdb.firebaseio.com",
+            projectId: "iot-8f44e",
+            storageBucket: "iot-8f44e.appspot.com",
+            messagingSenderId: "449340224338",
+            appId: "1:449340224338:web:4cc49765a4928b5139c08b",
+            measurementId: "G-PXZG5ZT959"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const dataTable = document.getElementById('dataTable');
+        const fechaSelector = document.getElementById('fechaSelector');
+
+        // Obtener las fechas disponibles en Firebase
+        database.ref('/').once('value').then(snapshot => {
+            const data = snapshot.val();
+
+            // Limpiar el selector de fechas antes de llenarlo
+            fechaSelector.innerHTML = "";
+
+            // Llenar el selector de fechas con las fechas disponibles
+            for (const fecha in data) {
+                if (data.hasOwnProperty(fecha)) {
+                    const option = document.createElement('option');
+                    option.value = fecha;
+                    option.textContent = fecha;
+                    fechaSelector.appendChild(option);
+                }
+            }
+        }).catch(error => {
+            console.error("Error al obtener fechas de Firebase:", error);
+        });
+
+        function mostrarDatosPorFecha() {
+            const selectedDate = fechaSelector.value;
+
+            // Ruta en Firebase para los datos de la fecha seleccionada
+            const firebasePath = `/${selectedDate}`;
+
+            // Referencia a la ruta en Firebase
+            const firebaseRef = database.ref(firebasePath);
+
+            // Obtener los datos de Firebase para la fecha seleccionada
+            firebaseRef.once('value').then(snapshot => {
+                const data = snapshot.val();
+
+                // Limpiar la tabla antes de agregar nuevos datos
+                const tableBody = dataTable.getElementsByTagName('tbody')[0];
+                tableBody.innerHTML = "";
+
+                if (data) {
+                    // Iterar sobre las mediciones y agregarlas a la tabla
+                    for (const medicion in data) {
+                        if (data.hasOwnProperty(medicion)) {
+                            const entry = data[medicion];
+                            const row = tableBody.insertRow();
+                            const dateCell = row.insertCell(0);
+                            const timeCell = row.insertCell(1);
+                            const temperatureCell = row.insertCell(2);
+                            const humidityCell = row.insertCell(3);
+                            const lightCell = row.insertCell(4);
+
+                            dateCell.textContent = entry.fecha;
+                            timeCell.textContent = entry.hora;
+                            temperatureCell.textContent = entry.temperatura;
+                            humidityCell.textContent = entry.humedad;
+                            lightCell.textContent = entry.luminosidad;
+                        }
+                    }
+					
+                    // Obtener datos para los gráficos
+                    const temperatureData = Object.values(data).map(entry => entry.temperatura);
+                    const humidityData = Object.values(data).map(entry => entry.humedad);
+                    const lightData = Object.values(data).map(entry => entry.luminosidad);
+
+                    // Construir gráficos utilizando Chart.js
+                    buildChart('temperatureChart', 'Temperatura (°C)', temperatureData, 'rgba(255, 0, 0, 1)');
+                    buildChart('humidityChart', 'Humedad (%)', humidityData, 'rgba(0, 0, 255, 1)');
+                    buildChart('lightChart', 'Luminosidad(%)', lightData, 'rgba(0, 128, 0, 1)');
+                } else {
+                    // No hay datos para la fecha seleccionada
+                    console.log("No hay datos para la fecha seleccionada.");
+                }
+            }).catch(error => {
+                console.error("Error al obtener datos de Firebase:", error);
+            });
+        }
+
+        function buildChart(chartId, label, data, color) {
+            const ctx = document.getElementById(chartId).getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: data.length }, (_, i) => i + 1),
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        borderColor: color,
+                        borderWidth: 1,
+                        fill: false,
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+
+</body>
+</html>
