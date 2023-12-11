@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-database.js"></script>
+	<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.min.js"></script>
+
+    <title>Página del Administrador</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+            text-align: center;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #1565c0; /* Azul */
+        }
+        section {
+            margin-bottom: 20px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            border: 1px solid #ddd;
+            padding: 12px;
+            margin-bottom: 5px;
+            text-align: left;
+            background-color: #f2f2f2;
+            border-radius: 4px;
+        }
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #777;
+        }
+        input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .regresar-btn {
+            font-size: 24px;
+            padding: 15px 30px;
+            margin: 20px;
+            cursor: pointer;
+            border: none;
+            color: #fff;
+            background-color: #1565c0; /* Azul */
+            border-radius: 10px;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        .regresar-btn:hover {
+            background-color: #0d47a1; /* Azul más oscuro al pasar el ratón */
+        }
+        .fecha-selector {
+            font-size: 18px;
+            padding: 10px;
+            margin-right: 10px;
+        }
+        .mostrar-btn {
+            font-size: 18px;
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            color: #fff;
+            background-color: #1565c0; /* Azul */
+            border-radius: 10px;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        .mostrar-btn:hover {
+            background-color: #0d47a1; /* Azul más oscuro al pasar el ratón */
+        }
+        .acceder-btn {
+            font-size: 18px;
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            color: #fff;
+            background-color: #1565c0; /* Azul */
+            border-radius: 10px;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        .acceder-btn:hover {
+            background-color: #0d47a1; /* Azul más oscuro al pasar el ratón */
+        }
+		        .fecha-selector {
+            font-size: 18px;
+            padding: 10px;
+            margin-right: 10px;
+        }
+		/* Estilos para la nueva ventana */
+        .nueva-ventana {
+            font-family: 'Roboto', sans-serif;
+            margin: 20px;
+            background-color: #fff;
+            color: #333;
+            text-align: left;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        /* Estilos para la tabla en la nueva ventana */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Bienvenido, Administrador</h1>
+    </header>
+
+    <section>
+        <h2>Acceso a configuración</h2>
+        <p>Nombre: <input type="text" id="nombreInput"></p>
+        <p>Contraseña: <input type="password" id="contrasenaInput"></p>
+        <button onclick="acceder()" class="acceder-btn">Acceder</button>
+    </section>
+
+    <section id="seccionReporte" style="display: none;">
+        <h2>Generar reporte</h2>
+        <label for="fechaSelector" class="fecha-selector">Selecciona una fecha:</label>
+        <select id="fechaSelector" class="fecha-selector"></select>
+        <button onclick="mostrarDatosPorFecha()" class="mostrar-btn">Mostrar Datos</button>
+    </section>
+
+    <!-- Botón para regresar al menú principal -->
+    <button class="regresar-btn" onclick="regresarAlMenuPrincipal()">Menú Principal</button>
+
+    <footer>
+        <p>&copy; 2023 Sistema de Monitoreo para Invernadero Aeropónico</p>
+    </footer>
+
+    <script>
+
+        function regresarAlMenuPrincipal() {
+            window.location.href = 'index.html';
+        }
+	
+	   const firebaseConfig = {
+            apiKey: "AIzaSyBNrtVulvBCYi3z7KCMx9u3mz7mVYL9i3M",
+            authDomain: "iot-8f44e.firebaseapp.com",
+            databaseURL: "https://iot-8f44e-default-rtdb.firebaseio.com",
+            projectId: "iot-8f44e",
+            storageBucket: "iot-8f44e.appspot.com",
+            messagingSenderId: "449340224338",
+            appId: "1:449340224338:web:4cc49765a4928b5139c08b",
+            measurementId: "G-PXZG5ZT959"
+        };
+		// Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        // Obtener la referencia de la base de datos
+        const database = firebase.database();
+
+	
+		function acceder() {
+            // Obtenemos los valores del nombre y la contraseña
+            const nombre = document.getElementById('nombreInput').value;
+            const contrasena = document.getElementById('contrasenaInput').value;
+
+            // Validamos las credenciales
+            const usuarios = [
+                { nombre: 'Armando', contrasena: '1234' },
+                { nombre: 'Sofia', contrasena: '9876' },
+                { nombre: 'Jessica', contrasena: '1298' }
+            ];
+
+            const usuarioValido = usuarios.find(user => user.nombre === nombre && user.contrasena === contrasena);
+
+            if (usuarioValido) {
+                // Mostramos las secciones de configuración y reporte
+                document.getElementById('seccionReporte').style.display = 'block';
+            } else {
+                alert('Credenciales incorrectas. Inténtalo de nuevo.');
+            }
+        }
+
+        // Obtener las fechas disponibles en Firebase
+        database.ref('/').once('value').then(snapshot => {
+            const data = snapshot.val();
+            const fechaSelector = document.getElementById('fechaSelector');
+
+            // Limpiar el selector de fechas antes de llenarlo
+            fechaSelector.innerHTML = "";
+
+            // Llenar el selector de fechas con las fechas disponibles
+            for (const fecha in data) {
+                if (data.hasOwnProperty(fecha)) {
+                    const option = document.createElement('option');
+                    option.value = fecha;
+                    option.textContent = fecha;
+                    fechaSelector.appendChild(option);
+                }
+            }
+        }).catch(error => {
+            console.error("Error al obtener fechas de Firebase:", error);
+        });
+
+        // Resto del código...
+function mostrarDatosPorFecha() {
+    // Obtener la fecha seleccionada
+    const fechaSeleccionada = document.getElementById('fechaSelector').value;
+
+    // Obtener los datos de Firebase para la fecha seleccionada
+    database.ref('/' + fechaSeleccionada).once('value').then(snapshot => {
+        const datos = snapshot.val();
+
+        // Construir un nuevo array con los valores que son objetos
+        const datosArray = [];
+        for (const key in datos) {
+            if (datos.hasOwnProperty(key) && typeof datos[key] === 'object' && datos[key] !== null) {
+                datosArray.push(datos[key]);
+            }
+        }
+
+        // Crear un nuevo documento HTML
+        const nuevaVentana = window.open('', 'Datos de Firebase', 'width=600,height=400');
+
+        // Construir el contenido HTML dentro de la nueva ventana
+        const contenidoHTML = `
+            <html lang="es">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Datos de Firebase</title>
+                    <style>
+                        /* Estilos específicos para la nueva ventana */
+                        body {
+                            font-family: 'Roboto', sans-serif;
+                            margin: 20px;
+                            background-color: #fff;
+                            color: #333;
+                            text-align: left;
+                            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                            padding: 20px;
+                            border-radius: 8px;
+                        }
+
+                        /* Estilos para la tabla en la nueva ventana */
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-top: 20px;
+                        }
+
+                        th, td {
+                            border: 1px solid #ddd;
+                            padding: 8px;
+                            text-align: left;
+                        }
+
+                        th {
+                            background-color: #f2f2f2;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h2>Datos de Firebase para la fecha ${fechaSeleccionada}</h2>
+                    <table id="tablaDatos">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Hora</th>
+                                <th>Humedad</th>
+                                <th>Luminosidad</th>
+                                <th>Temperatura</th>
+                                <!-- Agrega más encabezados según sea necesario -->
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </body>
+            </html>
+        `;
+
+        // Establecer el contenido HTML en la nueva ventana
+        nuevaVentana.document.open();
+        nuevaVentana.document.write(contenidoHTML);
+        nuevaVentana.document.close();
+
+        // Llenar la tabla en la nueva ventana con los datos filtrados
+        const tablaDatos = nuevaVentana.document.getElementById('tablaDatos').getElementsByTagName('tbody')[0];
+
+        datosArray.forEach(item => {
+            const fila = tablaDatos.insertRow();
+            const celdaFecha = fila.insertCell(0);
+            const celdaHora = fila.insertCell(1);
+            const celdaHumedad = fila.insertCell(2);
+            const celdaLuminosidad = fila.insertCell(3);
+            const celdaTemperatura = fila.insertCell(4);
+
+            // Asignar los valores de los datos a las celdas
+            celdaFecha.textContent = item.fecha;
+            celdaHora.textContent = item.hora;
+            celdaHumedad.textContent = item.humedad;
+            celdaLuminosidad.textContent = item.luminosidad;
+            celdaTemperatura.textContent = item.temperatura;
+            // Agrega más celdas y asigna valores según sea necesario
+        });
+
+        // Ajustar el tamaño de la ventana según la altura de la tabla
+        const alturaTabla = tablaDatos.offsetHeight + 100; // Añadir un espacio adicional de 100px
+        nuevaVentana.resizeTo(600, alturaTabla);
+    });
+}
+    </script>
+</body>
+</html>
